@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
+using adhochat.Hubs;
 
 namespace adhochat
 {
@@ -17,11 +18,13 @@ namespace adhochat
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.AddSignalR();
             services.AddSpaStaticFiles(configuration =>
             {
                 // In production, the React files will be served from this directory
                 configuration.RootPath = "app/build";
             });
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -34,6 +37,11 @@ namespace adhochat
 
             app.UseMvc();
             app.UseStaticFiles();
+            app.UseSignalR(route =>
+            {
+                route.MapHub<ChatHub>("/chat");
+            });
+
             app.UseSpa(spa =>
             {
                 spa.Options.SourcePath = "app";
