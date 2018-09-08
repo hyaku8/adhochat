@@ -14,6 +14,7 @@ class App extends Component {
     constructor(props) {
         super(props);
         this.state = {
+            user: "",
             nickname: "Tuntematon",
             nick_input: "Tuntematon",
             messages: []
@@ -23,6 +24,7 @@ class App extends Component {
         this.changeNickname = this.changeNickname.bind(this);
         this.nickChange = this.nickChange.bind(this);
         this.messageReceived = this.messageReceived.bind(this);
+        this.onReceive = this.onReceive.bind(this);
     }
 
     changeNickname(event) {
@@ -33,10 +35,16 @@ class App extends Component {
     }
 
     sendMessage(message) {
+        const chatMessage = {
+            senderId: this.state.user.id,
+            content: message,
+            chatId: 'geh'
+        };
+
         this.setState(prevState => ({
-            messages: [...prevState.messages, { user: prevState.nickname, content: message }]
+            messages: [...prevState.messages, chatMessage]
         }));
-        this.connection.invoke("SendMessage", this.state.nickname, message).catch(function (error) {
+        this.connection.invoke("SendMessage", chatMessage).catch(function (error) {
             console.log(error);
         });
     }
@@ -45,17 +53,31 @@ class App extends Component {
         this.setState({ nick_input: event.target.value });
     }
 
-    messageReceived(user, message) {
+    messageReceived(newMessages) {
         this.setState(prevState => ({
-            messages: [...prevState.messages, {user: user, content: message}]
+            messages: [...prevState.messages, newMessages]
         }));
     }
 
-    
-    render() {
+    onReceive(message) {
+        console.log(message);
+        switch (message.command) {
+            case 'msg':
+                this.messageReceived(message.parameters)
+                break;
+            case 'set_user':
+                localStorage.setItem("adchohat_user", message.parameters[0]);
+                this.setState({ user: message.parameters[0] })
+                break;
+            default:
+                break;
 
+        }
+    }
+
+    render() {
         const messageList = this.state.messages.map((message, index) =>
-            <ChatMessage key={index} message={message}></ChatMessage>);
+            <ChatMessage key={index} message={message.content}></ChatMessage>);
 
         return (
             <div>
@@ -101,10 +123,18 @@ class App extends Component {
         Axios.get("api/test/test").then(response => {
             this.setState({ test: response.data });
             this.connection = new HubConnectionBuilder().withUrl("/chat").build();
-            this.connection.on("msg", this.messageReceived);
+
+            this.connection.on("adhc_msg", this.onReceive)
             this.connection.start().catch(error => {
                 console.log(error);
+            }).then(() => {
+                console.log("ok");
+                var user = localStorage.getItem("adhochat_user") || { id: "" };
+                this.connection.invoke("Init", user.id).catch(error => {
+                    console.log("init error", error);
+                });
             });
+          
         });
     }
 }
