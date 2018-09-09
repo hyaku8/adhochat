@@ -42,7 +42,7 @@ namespace adhochat
 
             app.UseSignalR(route =>
             {
-                route.MapHub<ChatHub>("/chat");
+                route.MapHub<ChatHub>("/hub/chat");
             });
 
             app.UseSpa(spa =>

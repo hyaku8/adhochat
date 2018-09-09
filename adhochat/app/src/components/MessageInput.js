@@ -1,7 +1,6 @@
-import React, { Component } from 'react';
-import { Sidebar, Segment, Menu, Header, Icon, Container } from 'semantic-ui-react';
+import React from 'react';
 
-export class MessageInput extends Component {
+export class MessageInput extends React.Component {
 
     constructor(props) {
         super(props);
@@ -16,10 +15,10 @@ export class MessageInput extends Component {
     }
 
     handleSubmit(event) {
-        const message = this.state.message;
-        this.props.onNewMessage(message);
-        this.setState({ message: '' });
         event.preventDefault();
+        const message = this.state.message;
+        this.props.onNewMessage(this.props.chat.id, message);
+        this.setState({ message: '' });
     }
 
 
@@ -28,7 +27,7 @@ export class MessageInput extends Component {
             <form onSubmit={this.handleSubmit} >
                 <label>Message: </label>
                 <input type="text" name="message" value={this.state.message} onChange={this.handleChange} />
-                <input type="submit" value="Submit" />
+                <input type="submit" value="Send" />
             </form>
         );
     }

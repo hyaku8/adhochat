@@ -17,7 +17,7 @@ namespace adhochat.Core
         }
 
         public TValue this[TKey id] => 
-            this.items.ContainsKey(id) ? this.items[id] : default(TValue);
+            (id != null && this.items.ContainsKey(id)) ? this.items[id] : default(TValue);
 
         public void Add(TValue item)
         {
@@ -34,6 +34,11 @@ namespace adhochat.Core
         {
             return this.Remove(item.Id);
         }
+
+        public IEnumerable<TValue> Where(Func<TValue, bool> func)
+        {
+            return items.Values.Where(x => func(x));
+        }
     }
 
     public interface IRepository<TKey, TValue>
@@ -42,6 +47,7 @@ namespace adhochat.Core
         bool Remove(TKey item);
         bool Remove(TValue id);
         TValue this[TKey id] { get; }
+        IEnumerable<TValue> Where(Func<TValue, bool> func);
     }
 
     public interface IRepositoryItem<T>
@@ -49,3 +55,5 @@ namespace adhochat.Core
         T Id { get; set; }
     }
 }
+
+

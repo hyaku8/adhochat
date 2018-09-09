@@ -1,15 +1,25 @@
-import React, { Component } from 'react';
-import Axios from 'axios'
+import React from 'react';
 import logo from './logo.svg';
 import './App.css';
+
+import * as constants from './core/constants.js'
 
 import { HubConnectionBuilder } from '@aspnet/signalr'
 
 import { Sidebar, Segment, Menu, Header, Icon, Container } from 'semantic-ui-react';
-import { ChatMessage } from './components/ChatMessage'
-import { MessageInput } from './components/MessageInput'
+import { Chat } from './components/Chat';
 
-class App extends Component {
+
+import axios from 'axios'
+axios.interceptors.request.use(function (config) {
+    console.log(config);
+    var userId = localStorage.getItem(constants.LOCALSTORAGE_USERID);
+    if (userId)
+        config.headers[constants.HEADER_USERID] = userId;
+    return config;
+});
+
+class App extends React.Component {
 
     constructor(props) {
         super(props);
@@ -17,7 +27,7 @@ class App extends Component {
             user: "",
             nickname: "Tuntematon",
             nick_input: "Tuntematon",
-            messages: []
+            chats: []
         }
         this.connection = null;
         this.sendMessage = this.sendMessage.bind(this);
@@ -25,6 +35,8 @@ class App extends Component {
         this.nickChange = this.nickChange.bind(this);
         this.messageReceived = this.messageReceived.bind(this);
         this.onReceive = this.onReceive.bind(this);
+        this.newChat = this.newChat.bind(this);
+        this.joinChat = this.joinChat.bind(this);
     }
 
     changeNickname(event) {
@@ -34,19 +46,32 @@ class App extends Component {
         event.preventDefault();
     }
 
-    sendMessage(message) {
+    sendMessage(chatId, message) {
         const chatMessage = {
             senderId: this.state.user.id,
             content: message,
-            chatId: 'geh'
+            chatId: chatId
         };
 
-        this.setState(prevState => ({
-            messages: [...prevState.messages, chatMessage]
-        }));
+        this.addMessagetoChat(chatMessage);
+      
         this.connection.invoke("SendMessage", chatMessage).catch(function (error) {
             console.log(error);
         });
+    }
+
+    addMessagetoChat(chatMessages) {
+        if (!Array.isArray(chatMessages))
+            chatMessages = [chatMessages];
+
+        console.log("chatMessages", chatMessages);
+        const chats = this.state.chats;
+        const chat = chats.find(chat => chat.id == chatMessages[0].chatId);
+        chat.messages = chat.messages.concat(chatMessages);
+
+        this.setState(prevState => ({
+            chats: chats
+        }));
     }
 
     nickChange(event) {
@@ -54,19 +79,21 @@ class App extends Component {
     }
 
     messageReceived(newMessages) {
-        this.setState(prevState => ({
-            messages: [...prevState.messages, newMessages]
-        }));
+        console.log(newMessages);
+        this.addMessagetoChat(newMessages);
     }
 
+
+
     onReceive(message) {
-        console.log(message);
+        console.log("received", message);
         switch (message.command) {
             case 'msg':
                 this.messageReceived(message.parameters)
                 break;
             case 'set_user':
-                localStorage.setItem("adchohat_user", message.parameters[0]);
+                console.log("user", message.parameters[0]);
+                localStorage.setItem(constants.LOCALSTORAGE_USERID, message.parameters[0].id);
                 this.setState({ user: message.parameters[0] })
                 break;
             default:
@@ -75,9 +102,33 @@ class App extends Component {
         }
     }
 
+    newChat(event) {
+        axios.post("api/chat", { id: null }).then((response) => {
+            const newChat = response.data;
+            this.setState(prevState => ({
+                chats: [...prevState.chats, newChat]
+            }));
+        });
+    }
+
+    joinChat(event) {
+        const chatId = event.target.chatId.value;
+
+        axios.post("api/chat/join/" + chatId).then(response => {
+            const newChat = response.data;
+            this.setState(prevState => ({
+                chats: [...prevState.chats, newChat]
+            }));
+        });
+        event.preventDefault();
+    }
+
     render() {
-        const messageList = this.state.messages.map((message, index) =>
-            <ChatMessage key={index} message={message.content}></ChatMessage>);
+        console.log(this.state)
+        const chats = this.state.chats.map((chat, index) =>
+            <Chat key={chat.id} chat={chat} sendMessage={this.sendMessage}></Chat>);
+        
+
 
         return (
             <div>
@@ -102,16 +153,15 @@ class App extends Component {
 
                 <Container main>
                     <Header as='h2'>Adhochat</Header>
-                    <ul>
-                        {messageList}
-                    </ul>
-                    <MessageInput onNewMessage={this.sendMessage}></MessageInput>
 
-                    <br />
+                    <button type="button" onClick={this.newChat}>+ New Chat</button>
 
-                    <form onSubmit={this.changeNickname}>
-                        <label>Nickname: </label>
-                        <input type="text" value={this.state.nick_input} name="nickname" onChange={this.nickChange} />
+                    {chats}
+
+                    <form onSubmit={this.joinChat}>
+                        <label>Join chat: </label>
+                        <input type="text" name="chatId" />
+                        <input type="submit" value="Join" />
                     </form>
 
                 </Container>
@@ -120,22 +170,18 @@ class App extends Component {
     }
 
     componentDidMount() {
-        Axios.get("api/test/test").then(response => {
-            this.setState({ test: response.data });
-            this.connection = new HubConnectionBuilder().withUrl("/chat").build();
-
-            this.connection.on("adhc_msg", this.onReceive)
-            this.connection.start().catch(error => {
-                console.log(error);
-            }).then(() => {
-                console.log("ok");
-                var user = localStorage.getItem("adhochat_user") || { id: "" };
-                this.connection.invoke("Init", user.id).catch(error => {
-                    console.log("init error", error);
-                });
+        this.connection = new HubConnectionBuilder().withUrl("/hub/chat").build();
+        this.connection.on("adhc_msg", this.onReceive)
+        this.connection.start().catch(error => {
+            console.log(error);
+        }).then(() => {
+            console.log("ok");
+            var user = localStorage.getItem(constants.LOCALSTORAGE_USERID) || { id: "" };
+            this.connection.invoke("Init", user.id).catch(error => {
+                console.log("init error", error);
             });
-          
         });
+          
     }
 }
 

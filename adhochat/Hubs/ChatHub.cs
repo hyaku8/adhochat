@@ -16,11 +16,6 @@ namespace adhochat.Hubs
         {
             this.users = users;
             this.chats = chats;
-
-            this.chats.Add(new Chat()
-            {
-                Id = "geh",
-            });
         }
 
         public async Task SendMessage(ChatMessage message)
@@ -39,15 +34,6 @@ namespace adhochat.Hubs
             await Clients.Clients(recipients).ChatCommand(ChatCommands.SendMessage(message));
         }
 
-        public async Task CreateChat()
-        {
-
-        }
-
-        public async Task JoinChat(string code)
-        {
-        }
-
         public async Task Init(string userId)
         {
             User user = users[userId];
@@ -57,16 +43,20 @@ namespace adhochat.Hubs
                 string id = null;
                 do
                 {
-                    id = new Guid().ToString();
+                    id = Guid.NewGuid().ToString();
                 }
                 while (users[id] != null);
                 user.Id = id;
                 user.ConnectionId = Context.ConnectionId;
                 this.users.Add(user);
-                this.chats["geh"].Users.Add(user.Id);
+            }
+            else
+            {
+                user.Chats.AddRange(chats.Where(x => x.Users.Any(y => y == user.Id)));
             }
             await Clients.Client(Context.ConnectionId).ChatCommand(ChatCommands.SetUser(user));
 
         }
     }
+
 }
