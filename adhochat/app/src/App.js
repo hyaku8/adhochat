@@ -1,18 +1,17 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
-
+import 'semantic-ui-css/semantic.min.css';
 import * as constants from './core/constants.js'
 
 import { HubConnectionBuilder } from '@aspnet/signalr'
 
-import { Sidebar, Segment, Menu, Header, Icon, Container } from 'semantic-ui-react';
+import { Sidebar, Segment, Menu, Header, Icon, Container, Tab, Button, Input, Modal, Form } from 'semantic-ui-react';
 import { Chat } from './components/Chat';
 
 
 import axios from 'axios'
 axios.interceptors.request.use(function (config) {
-    console.log(config);
     var userId = localStorage.getItem(constants.LOCALSTORAGE_USERID);
     if (userId)
         config.headers[constants.HEADER_USERID] = userId;
@@ -27,7 +26,9 @@ class App extends React.Component {
             user: "",
             nickname: "Tuntematon",
             nick_input: "Tuntematon",
-            chats: []
+            chats: [],
+            joinChatValue: "",
+            showJoinChatModal: false
         }
         this.connection = null;
         this.sendMessage = this.sendMessage.bind(this);
@@ -112,60 +113,75 @@ class App extends React.Component {
     }
 
     joinChat(event) {
-        const chatId = event.target.chatId.value;
-
-        axios.post("api/chat/join/" + chatId).then(response => {
+        event.preventDefault();
+        axios.post("api/chat/join/" + this.state.joinChatValue).then(response => {
             const newChat = response.data;
             this.setState(prevState => ({
+                joinChatValue: '',
+                showJoinChatModal: false,
                 chats: [...prevState.chats, newChat]
             }));
         });
-        event.preventDefault();
     }
 
     render() {
-        console.log(this.state)
-        const chats = this.state.chats.map((chat, index) =>
-            <Chat key={chat.id} chat={chat} sendMessage={this.sendMessage}></Chat>);
-        
+        const chats = this.state.chats.map((chat, index) => {
+            return {
+                menuItem: chat.title,
+                render: () => <Tab.Pane>
+                    <Chat key={chat.id} chat={chat} sendMessage={this.sendMessage}></Chat>
+                </Tab.Pane>
+            };
+        });
 
+        const changeNickMenu = <div>
+            <Input inverted action='Change nickname' />
+        </div>
+
+        const joinModal = <Modal open={this.state.showJoinChatModal} size='tiny'
+            onClose={() => { this.setState({ showJoinChatModal: false }); }}
+            trigger={<Menu.Item
+            as='a'
+            name='joinChat'
+            onClick={() => { this.setState({ showJoinChatModal: true }); }}
+            content={<div><Icon name='arrow circle right' /> Join chat</div>}
+        />}>
+            <Modal.Header>Enter chat code</Modal.Header>
+            <Modal.Content>
+                <Form onSubmit={this.joinChat} >
+                    <Form.Input value={this.state.joinChatValue}
+                        onChange={(e) => { this.setState({ joinChatValue: e.target.value }) }}
+                        fluid action={<Button type='submit' primary onClick={this.joinChat} > Join</Button>} />
+                </Form>
+            </Modal.Content>
+        </Modal>
 
         return (
-            <div>
-                <Sidebar.Pushable as={Segment}>
-                    <Sidebar as={Menu} animation='overlay' icon='labeled' inverted vertical visible width='thin'>
-                        <Menu.Item as='a'>
-                            <Icon name='home' />
-                            Home
-                    </Menu.Item>
-                        <Menu.Item as='a'>
-                            <Icon name='gamepad' />
-                            Games
-                    </Menu.Item>
-                        <Menu.Item as='a'>
-                            <Icon name='camera' />
-                            Channels
-                     </Menu.Item>
-                    </Sidebar>
+            <Container fluid main>
+                <Segment basic fluid inverted>
+                    <Menu borderless inverted>
+                        <Menu.Header as='div' style={{ height: '100%' }}
+                            content={<span style={{ fontSize: '20px' }}>Adhochat</span>} />
+                        <Menu.Item position='right'
+                            as='a'
+                            name='changeNick'
+                            content={<div><Icon name='user circle' /> Change nick</div>}
+                        />
+                        {joinModal}
+                        <Menu.Item
+                            as='a'
+                            name='newChat'
+                            onClick={this.newChat}
+                            content={<div><Icon name='plus' /> New chat</div>}
+                        />
+                    </Menu>
+                </Segment>
 
+                {chats.length > 0 ?
+                    <Container fluid><Tab menu={{ fluid: true, vertical: true }} panes={chats} /></Container>
+                    : <Container textAlign='center'><Segment><Header as='h2'>Join or create a chat</Header></Segment></Container>}
 
-                </Sidebar.Pushable>
-
-                <Container main>
-                    <Header as='h2'>Adhochat</Header>
-
-                    <button type="button" onClick={this.newChat}>+ New Chat</button>
-
-                    {chats}
-
-                    <form onSubmit={this.joinChat}>
-                        <label>Join chat: </label>
-                        <input type="text" name="chatId" />
-                        <input type="submit" value="Join" />
-                    </form>
-
-                </Container>
-            </div>
+            </Container>
         );
     }
 
