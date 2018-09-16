@@ -24,9 +24,9 @@ namespace adhochat.Hubs
             chat.Messages.Add(message);
 
             List<string> recipients = new List<string>();
-            foreach(string userId in chat.Users)
+            foreach(User user in chat.Users)
             {
-                User receiver = users[userId];
+                User receiver = users[user.Id];
                 if (receiver.ConnectionId != Context.ConnectionId)
                     recipients.Add(receiver.ConnectionId);
             }
@@ -47,12 +47,13 @@ namespace adhochat.Hubs
                 }
                 while (users[id] != null);
                 user.Id = id;
+                user.Name = "User " + this.users.Count + 1;
                 user.ConnectionId = Context.ConnectionId;
                 this.users.Add(user);
             }
             else
             {
-                user.Chats.AddRange(chats.Where(x => x.Users.Any(y => y == user.Id)));
+                user.Chats.AddRange(chats.Where(x => x.Users.Any(y => y.Id == user.Id)));
             }
             await Clients.Client(Context.ConnectionId).ChatCommand(ChatCommands.SetUser(user));
 

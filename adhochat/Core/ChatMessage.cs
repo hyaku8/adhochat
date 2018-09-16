@@ -7,7 +7,7 @@ namespace adhochat.Core
 {
     public class ChatMessage
     {
-        public string SenderId { get; set; }
+        public string UserId { get; set; }
         public string ChatId { get; set; }
         public string Content { get; set; }
     }

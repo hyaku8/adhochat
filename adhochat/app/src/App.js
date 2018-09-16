@@ -6,8 +6,9 @@ import * as constants from './core/constants.js'
 
 import { HubConnectionBuilder } from '@aspnet/signalr'
 
-import { Sidebar, Segment, Menu, Header, Icon, Container, Tab, Button, Input, Modal, Form } from 'semantic-ui-react';
+import { Label, Segment, Menu, Header, Icon, Container, Tab, Button, Input, Modal, Form } from 'semantic-ui-react';
 import { Chat } from './components/Chat';
+import { JoinChatModal } from './components/JoinChatModal'
 
 
 import axios from 'axios'
@@ -23,12 +24,11 @@ class App extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            user: "",
+            user: null,
             nickname: "Tuntematon",
             nick_input: "Tuntematon",
             chats: [],
-            joinChatValue: "",
-            showJoinChatModal: false
+            activeChatIndex: 0
         }
         this.connection = null;
         this.sendMessage = this.sendMessage.bind(this);
@@ -49,7 +49,7 @@ class App extends React.Component {
 
     sendMessage(chatId, message) {
         const chatMessage = {
-            senderId: this.state.user.id,
+            userId: this.state.user.id,
             content: message,
             chatId: chatId
         };
@@ -67,8 +67,15 @@ class App extends React.Component {
 
         console.log("chatMessages", chatMessages);
         const chats = this.state.chats;
-        const chat = chats.find(chat => chat.id == chatMessages[0].chatId);
+        const index = chats.findIndex(chat => chat.id == chatMessages[0].chatId);
+
+
+        const chat = chats[index];
+        if (index != this.state.activeChatIndex) {
+            chat.unread = chat.unread ? (chat.unread + 1) : 1;
+        }
         chat.messages = chat.messages.concat(chatMessages);
+
 
         this.setState(prevState => ({
             chats: chats
@@ -84,8 +91,6 @@ class App extends React.Component {
         this.addMessagetoChat(newMessages);
     }
 
-
-
     onReceive(message) {
         console.log("received", message);
         switch (message.command) {
@@ -96,6 +101,12 @@ class App extends React.Component {
                 console.log("user", message.parameters[0]);
                 localStorage.setItem(constants.LOCALSTORAGE_USERID, message.parameters[0].id);
                 this.setState({ user: message.parameters[0] })
+                break;
+            case 'add_user_to_chat':
+                console.log("add user to chat", message.parameters[0]);
+                this.state.chats.find(chat => chat.id = message.parameters[0].chat.id).users.push(
+                    message.parameters[0].user);
+                this.forceUpdate();
                 break;
             default:
                 break;
@@ -112,24 +123,27 @@ class App extends React.Component {
         });
     }
 
-    joinChat(event) {
-        event.preventDefault();
-        axios.post("api/chat/join/" + this.state.joinChatValue).then(response => {
+    joinChat(chatId) {
+        axios.post("api/chat/join/" + chatId).then(response => {
             const newChat = response.data;
-            this.setState(prevState => ({
-                joinChatValue: '',
-                showJoinChatModal: false,
-                chats: [...prevState.chats, newChat]
-            }));
+            if (!this.state.chats.find(chat => chat.id == newChat.id)) {
+                this.setState(prevState => ({
+                    chats: [...prevState.chats, newChat]
+                }));
+            }
         });
     }
 
     render() {
         const chats = this.state.chats.map((chat, index) => {
             return {
-                menuItem: chat.title,
+                menuItem: <Menu.Item name={chat.title}>
+                    {(chat.unread && chat.unread > 0) &&
+                        <Label color='red'>{chat.unread}</Label>}
+                    {chat.title}
+                </Menu.Item>,
                 render: () => <Tab.Pane>
-                    <Chat key={chat.id} chat={chat} sendMessage={this.sendMessage}></Chat>
+                    <Chat key={chat.id} chat={chat} sendMessage={this.sendMessage} me={this.state.user}></Chat>
                 </Tab.Pane>
             };
         });
@@ -137,24 +151,6 @@ class App extends React.Component {
         const changeNickMenu = <div>
             <Input inverted action='Change nickname' />
         </div>
-
-        const joinModal = <Modal open={this.state.showJoinChatModal} size='tiny'
-            onClose={() => { this.setState({ showJoinChatModal: false }); }}
-            trigger={<Menu.Item
-            as='a'
-            name='joinChat'
-            onClick={() => { this.setState({ showJoinChatModal: true }); }}
-            content={<div><Icon name='arrow circle right' /> Join chat</div>}
-        />}>
-            <Modal.Header>Enter chat code</Modal.Header>
-            <Modal.Content>
-                <Form onSubmit={this.joinChat} >
-                    <Form.Input value={this.state.joinChatValue}
-                        onChange={(e) => { this.setState({ joinChatValue: e.target.value }) }}
-                        fluid action={<Button type='submit' primary onClick={this.joinChat} > Join</Button>} />
-                </Form>
-            </Modal.Content>
-        </Modal>
 
         return (
             <Container fluid main>
@@ -167,7 +163,7 @@ class App extends React.Component {
                             name='changeNick'
                             content={<div><Icon name='user circle' /> Change nick</div>}
                         />
-                        {joinModal}
+                        <JoinChatModal joinChat={this.joinChat} />
                         <Menu.Item
                             as='a'
                             name='newChat'
@@ -177,9 +173,20 @@ class App extends React.Component {
                     </Menu>
                 </Segment>
 
+                
                 {chats.length > 0 ?
-                    <Container fluid><Tab menu={{ fluid: true, vertical: true }} panes={chats} /></Container>
-                    : <Container textAlign='center'><Segment><Header as='h2'>Join or create a chat</Header></Segment></Container>}
+                    <Container style={{ paddingLeft: '10px', paddingRight: '10px' }} fluid>
+                        <Tab menu={{ fluid: true, vertical: true }} panes={chats} onTabChange={
+                            (event, data) => {
+                                const chats = this.state.chats;
+                                chats[data.activeIndex].unread = 0;
+                                this.setState({ activeChatIndex: data.activeIndex, chats: chats });
+                            }
+                        } />
+                    </Container>
+                    : <Container textAlign='center'>
+                        <Segment><Header as='h2'>Join or create a chat</Header></Segment>
+                    </Container> }
 
             </Container>
         );

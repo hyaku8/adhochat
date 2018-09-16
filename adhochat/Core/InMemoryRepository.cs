@@ -30,6 +30,14 @@ namespace adhochat.Core
             return this.items.TryRemove(id, out removed);
         }
 
+        public int Count
+        {
+            get
+            {
+                return this.items.Count;
+            }
+        }
+
         public bool Remove(TValue item)
         {
             return this.Remove(item.Id);
@@ -46,6 +54,7 @@ namespace adhochat.Core
         void Add(TValue item);
         bool Remove(TKey item);
         bool Remove(TValue id);
+        int Count { get;  }
         TValue this[TKey id] { get; }
         IEnumerable<TValue> Where(Func<TValue, bool> func);
     }

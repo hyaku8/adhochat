@@ -11,7 +11,7 @@ namespace adhochat.Core
     {
         public string Id { get; set; }
         public string Title { get; set; }
-        public List<string> Users { get; set; }
+        public List<User> Users { get; set; }
 
         private ConcurrentBag<ChatMessage> messages;
 
@@ -26,7 +26,7 @@ namespace adhochat.Core
         public Chat()
         {
             this.messages = new ConcurrentBag<ChatMessage>();
-            this.Users = new List<string>();
+            this.Users = new List<User>();
         }
 
         public IEnumerable<ChatMessage> Get(int startingFrom)

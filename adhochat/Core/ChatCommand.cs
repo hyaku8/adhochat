@@ -53,5 +53,14 @@ namespace adhochat.Core
                 Parameters = new List<Chat>() { chat }
             };
         }
+
+        public static ChatCommand<object> AddUserToChat(User user, Chat chat)
+        {
+            return new ChatCommand<object>()
+            {
+                Command = "add_user_to_chat",
+                Parameters = new List<object>() { new { User = user, Chat = chat } }
+            };
+        }
     }
 }

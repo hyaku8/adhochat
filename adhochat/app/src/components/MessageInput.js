@@ -1,4 +1,5 @@
 import React from 'react';
+import { Form, Button } from 'semantic-ui-react'
 
 export class MessageInput extends React.Component {
 
@@ -24,11 +25,10 @@ export class MessageInput extends React.Component {
 
     render() {
         return (
-            <form onSubmit={this.handleSubmit} >
-                <label>Message: </label>
-                <input type="text" name="message" value={this.state.message} onChange={this.handleChange} />
-                <input type="submit" value="Send" />
-            </form>
+            <Form onSubmit={this.handleSubmit}>
+                <Form.Input value={this.state.message} onChange={this.handleChange}
+                    fluid action={<Button type='submit' primary>Send</Button>} />
+            </Form>
         );
     }
 
