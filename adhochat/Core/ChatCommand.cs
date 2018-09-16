@@ -62,5 +62,14 @@ namespace adhochat.Core
                 Parameters = new List<object>() { new { User = user, Chat = chat } }
             };
         }
+
+        public static ChatCommand<User> NameChange(User user)
+        {
+            return new ChatCommand<User>()
+            {
+                Command = "user_name_change",
+                Parameters = new List<User>() { user }
+            };
+        }
     }
 }

@@ -47,7 +47,7 @@ namespace adhochat.Hubs
                 }
                 while (users[id] != null);
                 user.Id = id;
-                user.Name = "User " + this.users.Count + 1;
+                user.Name = "User " + (this.users.Count + 1);
                 user.ConnectionId = Context.ConnectionId;
                 this.users.Add(user);
             }

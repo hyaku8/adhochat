@@ -69,6 +69,24 @@ namespace adhochat.Controllers
             return Ok(chat);
         }
 
+        [HttpPost("changenick")]
+        public async Task<IActionResult> ChangeNick(User user)
+        {
+            string userId = Request.Headers.FirstOrDefault(x => x.Key == "x-adhochat-user-id").Value;
+            if (userId == null || this.users[userId] == null)
+                return BadRequest();
 
+            
+            this.users[userId].Name = user.Name;
+
+            var notifyThese = this.chats
+                .Where(x => x.Users.Any(y => y.Id == userId))
+                .SelectMany(x => x.Users.Where(y => y.Id != userId).Select(z => z.ConnectionId)).ToList();
+
+            await this.hubContext.Clients.Clients(notifyThese)
+                .ChatCommand(ChatCommands.NameChange(this.users[userId]));
+
+            return Ok();
+        }
     }
 }

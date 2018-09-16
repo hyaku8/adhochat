@@ -16,8 +16,6 @@ export class Chat extends React.Component {
 
     findUser(userId) {
         var user = this.props.chat.users.find(user => user.id == userId);
-        console.log("chat", this.props.chat);
-        console.log("looking for", userId)
         return user;
     }
 
